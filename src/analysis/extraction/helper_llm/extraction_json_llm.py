@@ -26,6 +26,8 @@ from .bare_struct_llm import (
     ImageInfo,
     TableInfo,
 )
+# the same repair of LaTeX letters as in the main extraction, so the AI reads the text the language checks read
+from analysis.extraction.raw_extraction.text_extractor import fix_latex, post_process_block
 
 
 # Tryb debugu:
@@ -131,26 +133,6 @@ def analyze_line_alignment(
         return "right", True, dist_right  # tekst wyrównany do prawej
     else:
         return "left", True, dist_right  # tekst wyrównany do lewej
-
-
-def fix_latex(text):
-    replace = {  # Słownik znaków do podmiany.
-        "´s": "ś",
-        "´S": "Ś",
-        "´c": "ć",
-        "´C": "Ć",
-        "´z": "ź",
-        "´Z": "Ź",
-        "˙z": "ż",
-        "˙Z": "Ż",
-        "´n": "ń",
-        "´N": "Ń",
-        "´o": "ó",
-        "´O": "Ó",
-    }
-    for wrong, right in replace.items():
-        text = text.replace(wrong, right)
-    return text
 
 
 def find_table_description(table_bbox, text_blocks, priority_side=None):
@@ -897,16 +879,14 @@ def parse_text_block(
             # curr_line.gap_to_r = gap_toright #debug
             lines.append(curr_line)
 
-    return (
-        TextBlock(
-            lines=lines,
-            bbox=raw_block["bbox"],
-            block_id=raw_block["number"],
-            block_type="footer" if is_ftr else "text",
-        ),
-        prev_bottomline,
-        current_span_id,
+    block = TextBlock(
+        lines=lines,
+        bbox=raw_block["bbox"],
+        block_id=raw_block["number"],
+        block_type="footer" if is_ftr else "text",
     )
+    # joins a word split in front of its ogonek: "rozwi" "ązań"
+    return post_process_block(block), prev_bottomline, current_span_id
 
 
 def check_page_format(width, height, tolerance: float = 10) -> str:
